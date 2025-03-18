@@ -1,0 +1,53 @@
+version: "3.8"
+
+services:
+  # MySQL Database Service
+  db:
+    image: mysql:5.7
+    container_name: mysql_container
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: user_db
+      MYSQL_USER: app_user
+      MYSQL_PASSWORD: password
+    ports:
+      - "3307:3306"  # ✅ External 3307 mapped to internal 3306
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:  # ✅ Ensures MySQL is ready before backend starts
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      retries: 5
+
+  # Backend Service
+  backend:
+    build: ./backend
+    container_name: backend_container
+    restart: always
+    environment:
+      DB_HOST: db
+      DB_USER: app_user
+      DB_PASS: password
+      DB_NAME: user_db
+      DB_PORT: 3306  # ✅ Internal port used by MySQL
+      JWT_SECRET: mysecret
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "5000:5000"
+
+  # Frontend Service
+  frontend:
+    build: ./frontend
+    container_name: frontend_container
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+
+# Volume for MySQL data persistence
+volumes:
+  mysql_data:
